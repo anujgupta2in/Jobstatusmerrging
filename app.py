@@ -700,7 +700,7 @@ def convert_df_to_csv(df: pd.DataFrame) -> str:
     return df.to_csv(index=False, encoding='utf-8')
 
 def main():
-    st.title("🔧 Job Status Enrichment Tool")
+    st.title("🔧 Job Status File Job Description Merging Tool")
     st.markdown("Upload Job Status and Job List CSV files to enrich job status data with additional information.")
     
     # Initialize session state
@@ -1033,3 +1033,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
