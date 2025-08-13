@@ -84,6 +84,7 @@ def create_excel_export(enriched_data: pd.DataFrame, vessel_name: str) -> bytes:
         'Verifying Rank', 
         'Maker',
         'Model',
+        'Critical',
         'Calculated Due Date',
         'Due Date',
         'Next Due',
@@ -220,7 +221,7 @@ def create_excel_export(enriched_data: pd.DataFrame, vessel_name: str) -> bytes:
         })
         
         # Write title
-        worksheet.merge_range('A1:Z1', f"{vessel_name} Job List", title_format)
+        worksheet.merge_range('A1:AA1', f"{vessel_name} Job List", title_format)
         
         # Format header row (row 1, 0-indexed) - overwrite pandas headers
         for col_num in range(len(column_order)):
@@ -248,20 +249,21 @@ def create_excel_export(enriched_data: pd.DataFrame, vessel_name: str) -> bytes:
             'J': 15,  # Verifying Rank
             'K': 15,  # Maker
             'L': 15,  # Model
-            'M': 15,  # Calculated Due Date
-            'N': 12,  # Due Date
-            'O': 12,  # Next Due
-            'P': 15,  # Completion Date
-            'Q': 12,  # Job Status
-            'R': 12,  # Job Action
-            'S': 18,  # Remaining Running Hours
-            'T': 20,  # Machinery Running Hours
-            'U': 20,  # Last Done Running Hours
-            'V': 15,  # Last Done Date
-            'W': 12,  # CMS Code
-            'X': 12,  # Job Source
-            'Y': 10,  # E-Form
-            'Z': 18   # Attachment Indicator
+            'M': 10,  # Critical
+            'N': 15,  # Calculated Due Date
+            'O': 12,  # Due Date
+            'P': 12,  # Next Due
+            'Q': 15,  # Completion Date
+            'R': 12,  # Job Status
+            'S': 12,  # Job Action
+            'T': 18,  # Remaining Running Hours
+            'U': 20,  # Machinery Running Hours
+            'V': 20,  # Last Done Running Hours
+            'W': 15,  # Last Done Date
+            'X': 12,  # CMS Code
+            'Y': 12,  # Job Source
+            'Z': 10,  # E-Form
+            'AA': 18  # Attachment Indicator
         }
         
         for col_letter, width in column_widths.items():
@@ -294,6 +296,13 @@ def enrich_job_status(job_status_df: pd.DataFrame, job_list_df: pd.DataFrame, cf
         # Create working copies
         js_work = job_status_df.copy()
         jl_work = job_list_df.copy()
+        
+        # Handle common column name issues - rename Unnamed columns to meaningful names
+        # Rename "Unnamed: 1" to "Critical" if it exists
+        if 'Unnamed: 1' in js_work.columns:
+            js_work = js_work.rename(columns={'Unnamed: 1': 'Critical'})
+        if 'Unnamed: 1' in jl_work.columns:
+            jl_work = jl_work.rename(columns={'Unnamed: 1': 'Critical'})
         
         # Normalize keys
         js_work['_norm_job_code'] = normalize_key(js_work[js_job_code_col])
@@ -553,10 +562,9 @@ def enrich_job_status(job_status_df: pd.DataFrame, job_list_df: pd.DataFrame, cf
             'auto_matched_rows': auto_matched_count,
             'job_code_only_matched_rows': job_code_only_matched_count,
             'unmatched_details': unmatched_details,
-            'duplicate_details': duplicate_details_df,
             'fuzzy_suggestions': fuzzy_suggestions,
-            'success': True,
-            'error': None
+            'duplicate_details': duplicate_details_df,
+            'success': True
         }
         
     except Exception as e:
@@ -566,11 +574,12 @@ def enrich_job_status(job_status_df: pd.DataFrame, job_list_df: pd.DataFrame, cf
         }
 
 def similarity_score(a: str, b: str) -> float:
-    """Calculate similarity score between two strings with enhanced matching for maritime equipment patterns."""
-    # Basic similarity
-    basic_score = SequenceMatcher(None, a, b).ratio()
+    """Calculate similarity score between two strings with maritime equipment-specific logic."""
     
-    # Enhanced scoring for common abbreviation patterns
+    # Basic sequence matcher
+    basic_score = SequenceMatcher(None, a.upper(), b.upper()).ratio()
+    
+    # Normalize strings for better comparison
     a_clean = a.upper().strip()
     b_clean = b.upper().strip()
     
@@ -730,6 +739,12 @@ def main():
             try:
                 st.session_state.job_status_df = pd.read_csv(job_status_file)
                 st.session_state.job_status_file = job_status_file  # Store file reference for vessel name extraction
+                
+                # Handle common column name issues
+                if 'Unnamed: 1' in st.session_state.job_status_df.columns:
+                    st.session_state.job_status_df = st.session_state.job_status_df.rename(columns={'Unnamed: 1': 'Critical'})
+                    st.info("✨ Renamed 'Unnamed: 1' column to 'Critical'")
+                
                 st.success(f"✅ Loaded {len(st.session_state.job_status_df)} rows")
                 
                 # Show preview
@@ -751,6 +766,12 @@ def main():
         if job_list_file is not None:
             try:
                 st.session_state.job_list_df = pd.read_csv(job_list_file)
+                
+                # Handle common column name issues
+                if 'Unnamed: 1' in st.session_state.job_list_df.columns:
+                    st.session_state.job_list_df = st.session_state.job_list_df.rename(columns={'Unnamed: 1': 'Critical'})
+                    st.info("✨ Renamed 'Unnamed: 1' column to 'Critical'")
+                
                 st.success(f"✅ Loaded {len(st.session_state.job_list_df)} rows")
                 
                 # Show preview
@@ -1033,4 +1054,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
